@@ -286,6 +286,8 @@ class Bibtool:
         else:
             print(" No errors found")
 
+        # leave a blank line
+        print()
 
 
 

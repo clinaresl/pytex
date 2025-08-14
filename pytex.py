@@ -55,6 +55,9 @@ import utils
 # Info messages
 INFO_NO_ERROR_FOUND = " No errors found"
 
+# Warning messages
+WARNING_MAX_NB_CYCLES = " The maximum number of cycles, {}, has been reached and the processor still recommends re-running the files"
+
 # Error messages
 ERROR_NO_ERROR_FOUND = " No errors were found, but the return code is non-null. Inspect the .log file!"
 
@@ -109,9 +112,7 @@ def guess_filename(basename: str) -> str:
         filename = texfile
 
     # Return None unless the filename was properly guessed
-    if filename is not None:
-        return filename
-    return None
+    return filename
 
 
 # -----------------------------------------------------------------------------
@@ -125,7 +126,7 @@ def guess_filename(basename: str) -> str:
 # processing the texfile
 # -----------------------------------------------------------------------------
 def run_latex(texfile: str,
-              processor: str, encoding: str) -> process.Processor:
+              processor: process.Processor, encoding: str) -> process.Processor:
     """This function opens a pipe to the binary to process the LaTeX file,
        compiles the given file and encodes both the standard output and error
        under the specified encoding
@@ -136,28 +137,26 @@ def run_latex(texfile: str,
     """
 
     # process the LaTeX file
-    compiler = process.Processor(texfile, processor, encoding)
-    compiler.run()
-    print(f"\tReturn code: {compiler.get_return_code()}")
+    processor.run()
 
     # process the output to find all warnings and errors, if any
-    compiler.process_warnings()
-    compiler.process_errors()
+    processor.process_warnings()
+    processor.process_errors()
 
     # and show all warnings on the standard console indexed by the file where
     # they were detected
-    for ifile in compiler.get_input_files():
-        if len(compiler.get_warnings(ifile)) > 0:
+    for ifile in processor.get_input_files():
+        if len(processor.get_warnings(ifile)) > 0:
             if ifile == "":
                 print(" Preamble:")
             else:
                 print(f" {ifile}")
-            print(f"{compiler.get_warnings(ifile):proc_warning}")
+            print(f"{processor.get_warnings(ifile):proc_warning}")
 
     # and finally, in case there are any errors show them on the standard output
-    if len(compiler.get_errors()) > 0:
+    if len(processor.get_errors()) > 0:
         print(" Errors found!")
-        for ierror in compiler.get_errors():
+        for ierror in processor.get_errors():
             print(f'{ierror:proc_error}')
 
     # if no errors were found, observe the return code anyway. Only if no errors
@@ -165,13 +164,13 @@ def run_latex(texfile: str,
     # maybe the processor was not able to find errors, but the user must be
     # warned
     else:
-        if compiler.get_return_code() != 0:
+        if processor.get_return_code() != 0:
             print(ERROR_NO_ERROR_FOUND)
         else:
             print(INFO_NO_ERROR_FOUND)
 
     # and return the processor
-    return compiler
+    return processor
 
 
 # -----------------------------------------------------------------------------
@@ -234,17 +233,36 @@ def main(texfile: str,
 
     """
 
-    # first things first, the unavoidable step is to process the texfile and, if
-    # any errors happened, then abort execution
-    compiler = run_latex(texfile, processor, encoding)
-    if len(compiler.get_errors()) > 0:
-        sys.exit(1)
+    # count the number of cycles, and set the maximum number of cycles
+    nb_cycles = 0
+    max_nb_cycles = 5
 
-    # next, process the bib directives in case there is any
-    run_bib(texfile, bib, encoding)
+    # create a LaTeX processor
+    compiler = process.Processor(texfile, processor, encoding)
 
-    # next, process the indices in case there is any
-    run_index(texfile, bib, encoding)
+    # until the processor is happy or five full cycles have been consumed. This
+    # might happen with some "pathological" docs
+    while compiler.get_rerun() and nb_cycles < max_nb_cycles:
+
+        # first things first, the unavoidable step is to process the texfile and, if
+        # any errors happened, then abort execution
+        compiler = run_latex(texfile, compiler, encoding)
+        if len(compiler.get_errors()) > 0:
+            sys.exit(1)
+
+        # next, process the bib directives in case there is any
+        run_bib(texfile, bib, encoding)
+
+        # next, process the indices in case there is any
+        run_index(texfile, bib, encoding)
+
+        # and update the number of cycles executed
+        nb_cycles += 1
+
+    # show a warning in case the processor insists in re-running even if the
+    # maximum number of cycles was reached
+    if compiler.get_rerun() and nb_cycles >= max_nb_cycles:
+        print(WARNING_MAX_NB_CYCLES.format(max_nb_cycles))
 
 
 # main
@@ -255,9 +273,7 @@ if __name__ == "__main__":
     cli = argparser.createArgParser().parse_args()
 
     # guess the full name of the LaTeX file to process
-    if (filename := guess_filename(cli.texfile)) and filename is not None:
-        print(f" {cli.processor} {filename}")
-    else:
+    if not (filename := guess_filename(cli.texfile)):
         raise ValueError(f"No .tex/.latex file found with name {cli.texfile}")
 
     # Next, determine the encoding. The user settings are used first; if none is
@@ -273,6 +289,7 @@ if __name__ == "__main__":
             # then resort to the best choice under UTF-8
             encoding = "UTF-8"
 
+    # show the encoding
     print(f" Using encoding {encoding}")
 
     # invoke the main service of this #!/usr/bin/env python

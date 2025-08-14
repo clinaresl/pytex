@@ -318,6 +318,9 @@ class Idxtool:
         else:
             print(" No errors found")
 
+        # leave a blank line
+        print()
+
 
 # Local Variables:
 # mode:python
