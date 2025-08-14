@@ -47,9 +47,6 @@ RE_BIB = re.compile(r'\\bibdata\{.*?\}|\\bibstyle\{.*?\}')
 #
 # 3. Otherwise, it is assumed that there are no bib references and None is
 #    returned
-#
-# filename is the base filename of the main LaTeX file, e.g., "main" if the file
-# being processed is named "main.tex"
 # -----------------------------------------------------------------------------
 def guess_bibtool(filename: str, encoding: str) -> str | None:
     """Follow a number of simple thumb rules to guess the bib tool to use. In a
@@ -62,9 +59,6 @@ def guess_bibtool(filename: str, encoding: str) -> str | None:
 
          3. Otherwise, it is assumed that there are no bib references and None is
             returned
-
-       filename is the base filename of the main LaTeX file, e.g., "main" if the
-       file being processed is named "main.tex"
 
     """
 
@@ -193,6 +187,10 @@ class Bibtool:
 
         """
 
+        # if no bib entries have to be processed return immediately
+        if not self._tool or self._tool == "":
+            return
+
         # determine the command to run
         cmd = self._tool
         if self._tool == "bibtex":
@@ -200,7 +198,7 @@ class Bibtool:
         elif self._tool == "biber":
             cmd = "biber"
         
-        # first things first, run latex at least once over the given tex file
+        # first things first, run the tool
         print(f' {cmd} {bibfile.stem}')
         sproc = subprocess.Popen(
             shlex.split(f'{cmd} {bibfile.stem}'),
@@ -220,13 +218,12 @@ class Bibtool:
             print(f"\t{iline}")
 
         # check whether there are any errors
-        if len(self._stderr) > 0:
+        if self._return_code != 0:
             print(" Errors found!")
             for iline in self._stderr.splitlines():
                 print(f"\t{iline}")
         else:
             print(" No errors found")
-
 
 
 # Local Variables:

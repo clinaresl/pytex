@@ -43,6 +43,7 @@ from pathlib import Path
 
 import argparser
 import bib
+import index
 import message
 import process
 import sys
@@ -196,6 +197,28 @@ def run_bib(texfile: str,
 
 
 # -----------------------------------------------------------------------------
+# run_index
+#
+# This function opens a pipe to the tool used to process indices and decode both
+# the standard output and error under the specified encoding
+# -----------------------------------------------------------------------------
+def run_index(texfile: str,
+              tool: str, encoding: str):
+    """This function opens a pipe to the tool used to process indices and decode
+       both the standard output and error under the specified encoding
+
+    """
+
+    # create an idxtool to process the indices in the texfile, provided there is
+    # any.
+    idxtool = index.Idxtool(texfile, encoding, tool)
+
+    # get all bibunits that have to be processed
+    for idxunit in idxtool.get_idx_files():
+        idxtool.run(idxunit)
+
+
+# -----------------------------------------------------------------------------
 # Automates processing a specific .tex file (named after texfile), which is
 # guaranteed to exist and to be readable
 #
@@ -219,6 +242,9 @@ def main(texfile: str,
 
     # next, process the bib directives in case there is any
     run_bib(texfile, bib, encoding)
+
+    # next, process the indices in case there is any
+    run_index(texfile, bib, encoding)
 
 
 # main
