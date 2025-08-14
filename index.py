@@ -16,6 +16,7 @@ the standard output and the standard error
 
 # imports
 # -----------------------------------------------------------------------------
+import hashlib
 import re
 import shlex
 import subprocess
@@ -28,6 +29,9 @@ from pathlib import Path
 
 # regular expressions
 
+# The following regular expression matches index directives which are extracted
+# to compute the fingerprint of the indices
+RE_INDEX = r'\\indexentry(?:\[[^]]+\])?\{.*\}\{.*\}\s*'
 
 # functions
 # -----------------------------------------------------------------------------
@@ -162,6 +166,52 @@ def guess_index_files(filename: str, tool: str, encoding: str) -> list[Path]:
 
 
 # -----------------------------------------------------------------------------
+# hash_index_files
+#
+# Return a md5 hash code that provides a blueprint of the last processing of the
+# indices. This blueprint is used later to determine whether the index tool has to
+# be run again, or not.
+# -----------------------------------------------------------------------------
+def hash_index_files(filename: str, tool: str, encoding: str) -> str:
+    """Return a md5 hash code that provides a blueprint of the last processing
+       of the indices. This blueprint is used later to determine whether the
+       index tool has to be run again, or not.
+
+    """
+
+    # First, get the files to process
+    idx_files = guess_index_files(filename, tool, encoding)
+
+    # in case splitindex is used, just return the md5 hash code of the idx file
+    if tool == "splitindex":
+        txt = idx_files[0].read_text(encoding=encoding, errors="ignore")
+        return hashlib.md5(txt.encode(encoding)).hexdigest()
+
+    # if makeindex is used, then process all files and build a string which
+    # contains only lines with \indexentry
+    if tool == "makeindex":
+
+        contents = ""
+        for aux_path in idx_files:
+            txt = aux_path.read_text(encoding=encoding, errors="ignore")
+
+            # and now get all the index directives in this file
+            idx_contents = ""
+            for m in RE_INDEX.finditer(txt):
+                idx_contents += m.group(0) + '\n'
+
+            # and add it to the overall contents
+            contents += idx_contents
+
+        # and return the md5 hash code
+        print(f"idx contents: {contents}")
+        return hashlib.md5(contents.encode(encoding)).hexdigest()
+
+    # This should never happen but ...
+    return ""
+
+
+# -----------------------------------------------------------------------------
 # Idxtool
 #
 # Definition of an idx processor along with various services for parsing both
@@ -200,15 +250,26 @@ class Idxtool:
         # and now get all files to process
         self._idx_files = guess_index_files(texfile, self._tool, encoding)
 
-    def get_tool(self) -> str:
-        """Return the tool to use for processing the indices"""
+        # also, the index directives are summarized in a md5 hash code to check
+        # whether it is necessary to run the index tool again. This is computed
+        # after every execution of the index tool
+        self._fingerprint = ""
 
-        return self._tool
+    def get_fingerprint(self) -> str:
+        """Return the fingerprint of all the index directives"""
+
+        return self._fingerprint
+
 
     def get_idx_files(self) -> [str]:
         """Return the files to process"""
 
         return self._idx_files
+
+    def get_tool(self) -> str:
+        """Return the tool to use for processing the indices"""
+
+        return self._tool
 
     def run(self, idxfile: str):
         """Opens a pipe to the binary to process the specified index file, and
@@ -247,6 +308,9 @@ class Idxtool:
             print(f"\t{iline}")
         for iline in self._stderr.splitlines():
             print(f"\t{iline}")
+
+        # update the fingerprint
+        self._fingerprint = hash_index_files(self._idxfile, self._tool, self._encoding)
 
         # check whether there are any errors
         if self._return_code != 0:

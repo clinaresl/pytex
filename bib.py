@@ -16,6 +16,7 @@ the standard output and the standard error
 
 # imports
 # -----------------------------------------------------------------------------
+import hashlib
 import re
 import shlex
 import subprocess
@@ -28,8 +29,10 @@ from pathlib import Path
 
 # regular expressions
 
-# regular expression used to look for bib directives in .aux files
-RE_BIB = re.compile(r'\\bibdata\{.*?\}|\\bibstyle\{.*?\}')
+# regular expression used to look for bib directives in .aux files and also to
+# generate the fingerprint of bib files
+RE_BIB = re.compile(r'\\bibdata\{.*?\}|\\bibstyle\{.*?\}|\\citation\{.*?\}')
+
 
 # functions
 # -----------------------------------------------------------------------------
@@ -131,6 +134,51 @@ def guess_bibfiles(filename: str, tool: str, encoding: str) -> list[Path]:
 
 
 # -----------------------------------------------------------------------------
+# hash_bibfiles
+#
+# Return a md5 hash code that provides a blueprint of the last processing of the
+# bib entries. This blueprint is used later to determine whether the bib tool
+# has to be run again, or not.
+# -----------------------------------------------------------------------------
+def hash_bibfiles(filename: str, tool: str, encoding: str) -> str:
+    """Return a md5 hash code that provides a blueprint of the last processing
+       of the bib entries. This blueprint is used later to determine whether the
+       bib tool has to be run again, or not.
+
+    """
+
+    # First, get the files to process
+    bibfiles = guess_bibfiles(filename, tool, encoding)
+
+    # in case biber is used, just return the md5 hash code of the bcf file
+    if tool == "biber":
+        txt = bibfiles[0].read_text(encoding=encoding, errors="ignore")
+        return hashlib.md5(txt.encode(encoding)).hexdigest()
+
+    # if bibtex is used, then process all files and build a string which
+    # contains only lines with \bibdata/\bibstyle/\citation
+    if tool == "bibtex":
+
+        contents = ""
+        for aux_path in bibfiles:
+            txt = aux_path.read_text(encoding=encoding, errors="ignore")
+
+            # and now get all the bib directives in this file
+            bib_contents = ""
+            for m in RE_BIB.finditer(txt):
+                bib_contents += m.group(0) + '\n'
+
+            # and add it to the overall contents
+            contents += bib_contents
+
+        # and return the md5 hash code
+        return hashlib.md5(contents.encode(encoding)).hexdigest()
+
+    # This should never happen but ...
+    return ""
+
+
+# -----------------------------------------------------------------------------
 # Bibtool
 #
 # Definition of a bib processor along with various services for parsing both the
@@ -169,16 +217,26 @@ class Bibtool:
         # and now get all bibunits to process
         self._bib_files = guess_bibfiles(texfile, self._tool, encoding)
 
+        # also, the bib directives are summarized in a md5 hash code to check
+        # whether it is necessary to run the bib tool again. This is computed
+        # after every execution of the bibtool
+        self._fingerprint = ""
 
-    def get_tool(self) -> str:
-        """Return the tool to use for processing the bib directives"""
+    def get_fingerprint(self) -> str:
+        """Return the fingerprint of all the bib directives"""
 
-        return self._tool
+        return self._fingerprint
+
 
     def get_bibfiles(self) -> [str]:
         """Return the files to process"""
 
         return self._bib_files
+
+    def get_tool(self) -> str:
+        """Return the tool to use for processing the bib directives"""
+
+        return self._tool
 
     def run(self, bibfile: str):
         """Opens a pipe to the binary to process the specified bib file, and
@@ -217,6 +275,9 @@ class Bibtool:
         for iline in self._stdout.splitlines():
             print(f"\t{iline}")
 
+        # update the fingerprint
+        self._fingerprint = hash_bibfiles(self._bibfile, self._tool, self._encoding)
+
         # check whether there are any errors
         if self._return_code != 0:
             print(" Errors found!")
@@ -224,6 +285,8 @@ class Bibtool:
                 print(f"\t{iline}")
         else:
             print(" No errors found")
+
+
 
 
 # Local Variables:
