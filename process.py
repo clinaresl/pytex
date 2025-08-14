@@ -149,8 +149,8 @@ class Processor:
 
     def __init__(self, texfile: str, processor: str, encoding: str):
         """A processor is created with a LaTeX file to process, a binary
-        accessible from the current $PATH and a specific encoding used to decode
-        both the standard output and standard error
+           accessible from the current $PATH and a specific encoding used to
+           decode both the standard output and standard error
 
         """
 
@@ -213,8 +213,8 @@ class Processor:
 
     def run(self):
         """Opens a pipe to the binary to process the LaTeX file, compiles the
-       given file and encodes both the standard output and error under the
-       specified encoding
+           given file and encodes both the standard output and error under the
+           specified encoding
 
         """
 

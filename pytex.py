@@ -42,8 +42,10 @@ import re
 from pathlib import Path
 
 import argparser
+import bib
 import message
 import process
+import sys
 import utils
 
 # constants
@@ -112,64 +114,23 @@ def guess_filename(basename: str) -> str:
 
 
 # -----------------------------------------------------------------------------
-# guess_bib_tool
-#
-# Follow a number of simple thumb rules to guess the bib tool to use
-# -----------------------------------------------------------------------------
-def guess_bib_tool(jobname: str, workdir: Path) -> str | None:
-    """Return "biber", "bibtex", or None (no bib processing needed).
-
-    This service must be invoked after the main LaTeX file has been processed at
-    least once
-
-    """
-    base = workdir / jobname
-    if (base.with_suffix(".bcf")).exists():
-        return "biber"
-
-    aux_files = list(workdir.glob("*.aux"))
-    bib_re = re.compile(r"\\bibdata\{.*?\}|\\bibstyle\{.*?\}")
-    for aux in aux_files:
-        try:
-            txt = aux.read_text(encoding="utf-8", errors="ignore")
-        except Exception:
-            continue
-        if bib_re.search(txt):
-            return "bibtex"
-
-    return None
-
-
-# -----------------------------------------------------------------------------
 # run_latex
 #
 # This function opens a pipe to the binary to process the LaTeX file, compiles
 # the given file and decode both the standard output and error under the
-# specified encoding
+# specified encoding.
+#
+# It returns a processor which contains all the information that resulted from
+# processing the texfile
 # -----------------------------------------------------------------------------
 def run_latex(texfile: str,
-              processor: str, encoding: str):
+              processor: str, encoding: str) -> process.Processor:
     """This function opens a pipe to the binary to process the LaTeX file,
        compiles the given file and encodes both the standard output and error
        under the specified encoding
 
-    """
-
-
-
-# -----------------------------------------------------------------------------
-# Automates processing a specific .tex file (named after texfile), which is
-# guaranteed to exist and to be readable
-#
-# It also guesses whether to process the bib references and/or the index tables
-# -----------------------------------------------------------------------------
-def main(texfile: str,
-         processor: str, bib: str, index: str, encoding: str):
-    """Automates processing a specific .tex file (named after texfile), which is
-    guaranteed to exist and to be readable
-
-    It also guesses whether to process the bib references and/or the index
-    tables and what tools to do so
+       It returns a processor which contains all the information that resulted
+       from processing the texfile
 
     """
 
@@ -207,6 +168,58 @@ def main(texfile: str,
             print(ERROR_NO_ERROR_FOUND)
         else:
             print(INFO_NO_ERROR_FOUND)
+
+    # and return the processor
+    return compiler
+
+
+# -----------------------------------------------------------------------------
+# run_bibtex
+#
+# This function opens a pipe to the tool used to process bibunits and decode
+# both the standard output and error under the specified encoding
+# -----------------------------------------------------------------------------
+def run_bib(texfile: str,
+            tool: str, encoding: str):
+    """This function opens a pipe to the tool used to process bibunits and
+       decode both the standard output and error under the specified encoding
+
+    """
+
+    # create a bibtool to process the bib references in the texfile, provided
+    # there is any.
+    bibtool = bib.Bibtool(texfile, encoding, tool)
+
+    # get all bibunits that have to be processed
+    for bibunit in bibtool.get_bibfiles():
+        bibtool.run(bibunit)
+
+
+# -----------------------------------------------------------------------------
+# Automates processing a specific .tex file (named after texfile), which is
+# guaranteed to exist and to be readable
+#
+# It also guesses whether to process the bib references and/or the index tables
+# -----------------------------------------------------------------------------
+def main(texfile: str,
+         processor: str, bib: str, index: str, encoding: str):
+    """Automates processing a specific .tex file (named after texfile), which is
+    guaranteed to exist and to be readable
+
+    It also guesses whether to process the bib references and/or the index
+    tables and what tools to do so
+
+    """
+
+    # first things first, the unavoidable step is to process the texfile and, if
+    # any errors happened, then abort execution
+    compiler = run_latex(texfile, processor, encoding)
+    if len(compiler.get_errors()) > 0:
+        sys.exit(1)
+
+    # next, process the bib directives in case there is any
+    run_bib(texfile, bib, encoding)
+
 
 # main
 # -----------------------------------------------------------------------------
