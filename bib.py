@@ -27,11 +27,15 @@ from pathlib import Path
 # constants
 # -----------------------------------------------------------------------------
 
+# warning messages
+WARNING_DIFFERENT_TOOL = " {} was given to process the bibliography and it will be used, but it is recommended to use {} instead"
+WARNING_NO_BIB_FILES = " No bib files found with tool {}"
+
 # regular expressions
 
 # regular expression used to look for bib directives in .aux files and also to
 # generate the fingerprint of bib files
-RE_BIB = re.compile(r'\\bibdata\{.*?\}|\\bibstyle\{.*?\}|\\citation\{.*?\}')
+RE_BIB = re.compile(r'\\bibdata\{.*?\}|\\citation\{.*?\}')
 
 
 # functions
@@ -213,12 +217,19 @@ class Bibtool:
         # other services
         (self._stdout, self._stderr, self._return_code) = ("", "", None)
 
-        # in case that no tool has been specifically given, then guess it
+        # guess the recommended tool for processing the bib directives and, in
+        # case the user provided a selection, then verify it matches. If not,
+        # warn her
+        recommended = guess_bibtool(texfile, encoding)
+        if tool and tool != "" and tool != recommended:
+            print(WARNING_DIFFERENT_TOOL.format(self._tool, recommended))
         if not tool or tool == "":
-            self._tool = guess_bibtool(texfile, encoding)
+            self._tool = recommended
 
         # and now get all bibunits to process
         self._bib_files = guess_bibfiles(texfile, self._tool, encoding)
+        if self._tool is not None and self._tool != "" and len(self._bib_files) == 0:
+            print(WARNING_NO_BIB_FILES.format(self._tool))
 
         # also, the bib directives are summarized in a md5 hash code to check
         # whether it is necessary to run the bib tool again. This is computed

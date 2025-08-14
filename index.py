@@ -27,6 +27,10 @@ from pathlib import Path
 # constants
 # -----------------------------------------------------------------------------
 
+# warning messages
+WARNING_DIFFERENT_TOOL = " {} was given to process the indices and it will be used, but it is recommended to use {} instead"
+WARNING_NO_INDEX_FILES = " No index files found with tool {}"
+
 # regular expressions
 
 # The following regular expression matches index directives which are extracted
@@ -209,7 +213,6 @@ def hash_index_files(filename: str, tool: str, encoding: str) -> str:
             contents += idx_contents
 
         # and return the md5 hash code
-        print(f"idx contents: {contents}")
         return hashlib.md5(contents.encode(encoding)).hexdigest()
 
     # This should never happen but ...
@@ -248,12 +251,22 @@ class Idxtool:
         # other services
         (self._stdout, self._stderr, self._return_code) = ("", "", None)
 
+        # guess the recommended tool for processing the indices and, in case the
+        # user provided a selection, then verify it matches. If not, warn her
+        recommended = guess_index_tool(texfile, encoding)
+        if tool and tool != "" and tool != recommended:
+            print(WARNING_DIFFERENT_TOOL.format(self._tool, recommended))
+        if not tool or tool == "":
+            self._tool = recommended
+
+        # and now get all index unit to process
+        self._idx_files = guess_index_files(texfile, self._tool, encoding)
+        if self._tool is not None and self._tool != "" and len(self._idx_files) == 0:
+            print(WARNING_NO_INDEX_FILES.format(self._tool))
+
         # in case that no tool has been specifically given, then guess it
         if not tool or tool == "":
             self._tool = guess_index_tool(texfile, encoding)
-
-        # and now get all files to process
-        self._idx_files = guess_index_files(texfile, self._tool, encoding)
 
         # also, the index directives are summarized in a md5 hash code to check
         # whether it is necessary to run the index tool again. This is computed
