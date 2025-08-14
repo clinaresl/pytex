@@ -207,8 +207,8 @@ class Processor:
 
         return self._input_files
 
-    def get_rerun(self):
-        """Return whether the processor recommending re-running the files"""
+    def get_rerun(self) -> bool:
+        """Return whether the processor recommends re-running the files"""
 
         return self._rerun
 
@@ -233,6 +233,11 @@ class Processor:
         """
 
         print(f' {self._processor} {self._texfile}')
+
+        # When starting a new process, ensure that all warnings and errors are removed
+        self._warnings = defaultdict(ProcessorWarnings)
+        self._global_warnings = message.Messages()
+        self._errors: list[message.Message] = []
 
         # first things first, run latex at least once over the given tex file
         sproc = subprocess.Popen(

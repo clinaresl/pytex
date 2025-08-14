@@ -169,6 +169,9 @@ def run_latex(texfile: str,
         else:
             print(INFO_NO_ERROR_FOUND)
 
+    # leave a blank line
+    print()
+
     # and return the processor
     return processor
 
@@ -180,19 +183,18 @@ def run_latex(texfile: str,
 # both the standard output and error under the specified encoding
 # -----------------------------------------------------------------------------
 def run_bib(texfile: str,
-            tool: str, encoding: str):
+            tool: bib.Bibtool, encoding: str):
     """This function opens a pipe to the tool used to process bibunits and
        decode both the standard output and error under the specified encoding
 
     """
 
-    # create a bibtool to process the bib references in the texfile, provided
-    # there is any.
-    bibtool = bib.Bibtool(texfile, encoding, tool)
+    # check first whether it is necessary to process the files
+    if tool.get_rerun():
 
-    # get all bibunits that have to be processed
-    for bibunit in bibtool.get_bibfiles():
-        bibtool.run(bibunit)
+        # get all bibunits that have to be processed
+        for bibunit in tool.get_bibfiles():
+            tool.run(bibunit)
 
 
 # -----------------------------------------------------------------------------
@@ -202,19 +204,18 @@ def run_bib(texfile: str,
 # the standard output and error under the specified encoding
 # -----------------------------------------------------------------------------
 def run_index(texfile: str,
-              tool: str, encoding: str):
+              tool: index.Idxtool, encoding: str):
     """This function opens a pipe to the tool used to process indices and decode
        both the standard output and error under the specified encoding
 
     """
 
-    # create an idxtool to process the indices in the texfile, provided there is
-    # any.
-    idxtool = index.Idxtool(texfile, encoding, tool)
+    # check first whether it is necessary to process the files
+    if tool.get_rerun():
 
-    # get all bibunits that have to be processed
-    for idxunit in idxtool.get_idx_files():
-        idxtool.run(idxunit)
+        # get all index files that have to be processed
+        for idxunit in tool.get_idx_files():
+            tool.run(idxunit)
 
 
 # -----------------------------------------------------------------------------
@@ -224,7 +225,7 @@ def run_index(texfile: str,
 # It also guesses whether to process the bib references and/or the index tables
 # -----------------------------------------------------------------------------
 def main(texfile: str,
-         processor: str, bib: str, index: str, encoding: str):
+         processor: str, bib_hint: str, index_hint: str, encoding: str):
     """Automates processing a specific .tex file (named after texfile), which is
     guaranteed to exist and to be readable
 
@@ -240,6 +241,9 @@ def main(texfile: str,
     # create a LaTeX processor
     compiler = process.Processor(texfile, processor, encoding)
 
+    # initialize the bib/index tools to None
+    bibtool, idxtool = None, None
+
     # until the processor is happy or five full cycles have been consumed. This
     # might happen with some "pathological" docs
     while compiler.get_rerun() and nb_cycles < max_nb_cycles:
@@ -250,11 +254,17 @@ def main(texfile: str,
         if len(compiler.get_errors()) > 0:
             sys.exit(1)
 
-        # next, process the bib directives in case there is any
-        run_bib(texfile, bib, encoding)
+        # In case the bibtool does not exist yet, create it, and then reuse it
+        # in the following cycles.
+        if not bibtool:
+            bibtool = bib.Bibtool(texfile, encoding, bib_hint)
+        run_bib(texfile, bibtool, encoding)
 
-        # next, process the indices in case there is any
-        run_index(texfile, bib, encoding)
+        # In case the index tool does not exist yet, create it, and then reuse
+        # it in the following cycles
+        if not idxtool:
+            idxtool = index.Idxtool(texfile, encoding, index_hint)
+        run_index(texfile, idxtool, encoding)
 
         # and update the number of cycles executed
         nb_cycles += 1

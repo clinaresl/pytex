@@ -33,6 +33,11 @@ from pathlib import Path
 # to compute the fingerprint of the indices
 RE_INDEX = r'\\indexentry(?:\[[^]]+\])?\{.*\}\{.*\}\s*'
 
+# The following regular expressions intentionally distinguish between tagged and
+# untagged index entries
+RE_TAGGED_INDEX_ENTRY = r'^\s*\\indexentry\[[^]]+\]'
+RE_UNTAGGED_INDEX_ENTRY = r'^\s*\\indexentry\{'
+
 # functions
 # -----------------------------------------------------------------------------
 
@@ -69,19 +74,19 @@ def guess_index_tool(filename: str, encoding: str) -> str | None:
     # Get a path to the index file and also to the different -*.idx files
     base = Path(filename)
     idx_main = base.with_suffix(".idx")
-    tagged_idx = Path('.').glob(f"{filename}-*.idx")
+    tagged_idx = Path.cwd().glob(f"{filename}-*.idx")
 
     # In case there is a single .idx file
     if idx_main.exists():
         txt = idx_main.read_text(encoding=encoding, errors="replace")
 
         # if this file contains tagged index entries, then recommend splitindex
-        if re.search(r'^\s*\\indexentry\[[^]]+\]', txt, flags=re.M) is not None:
+        if re.search(RE_TAGGED_INDEX_ENTRY, txt, flags=re.M) is not None:
             return "splitindex"
 
         # otherwise, if there are only untagged entries, then recommend
         # makeindex
-        if re.search(r'^\s*\\indexentry\{', txt, flags=re.M) is not None and \
+        if re.search(RE_UNTAGGED_INDEX_ENTRY, txt, flags=re.M) is not None and \
            not tagged_idx:
             return "makeindex"
 
@@ -92,7 +97,7 @@ def guess_index_tool(filename: str, encoding: str) -> str | None:
             txt = idxfile.read_text(encoding=encoding, errors="replace")
 
             # if this file contains untagged entries, then suggest makeindex
-            if re.search(r'^\s*\\indexentry\{', txt, flags=re.M) is not None:
+            if re.search(RE_UNTAGGED_INDEX_ENTRY, txt, flags=re.M) is not None:
                 return "makeindex"
 
     # At this point, it is assumed that no indices are required and None is
@@ -146,7 +151,7 @@ def guess_index_files(filename: str, tool: str, encoding: str) -> list[Path]:
 
         # if this file contains untagged entries and there are no multiple
         # -*.idx files, then return it right away
-        if re.search(r'^\s*\\indexentry\{', txt, flags=re.M) is not None and \
+        if re.search(RE_UNTAGGED_INDEX_ENTRY, txt, flags=re.M) is not None and \
            not tagged_idx:
             return [filename]
 
@@ -158,7 +163,7 @@ def guess_index_files(filename: str, tool: str, encoding: str) -> list[Path]:
 
             # if this file contains untagged entries, then add it to the files
             # to process
-            if re.search(r'^\s*\\indexentry\{', txt, flags=re.M) is not None:
+            if re.search(RE_UNTAGGED_INDEX_ENTRY, txt, flags=re.M) is not None:
                 aux_files.append(idxfile)
 
     # and return all files
@@ -266,6 +271,13 @@ class Idxtool:
 
         return self._idx_files
 
+    def get_rerun(self) -> bool:
+        """Return whether the processing has to be repeated"""
+
+        # compute the hash index of the files to process. If it is different
+        # than the current one then it is necessary to re-process again.
+        return hash_index_files(self._idxfile, self._tool, self._encoding) != self._fingerprint
+
     def get_tool(self) -> str:
         """Return the tool to use for processing the indices"""
 
@@ -281,6 +293,9 @@ class Idxtool:
         # if no indices have to be processed return immediately
         if not self._tool or self._tool == "":
             return
+
+        # update the fingerprint
+        self._fingerprint = hash_index_files(self._idxfile, self._tool, self._encoding)
 
         # determine the command to run: makeindex can be optionally run "-q" to
         # produce minimalist output, but anyway, it does not generate so much
@@ -308,9 +323,6 @@ class Idxtool:
             print(f"\t{iline}")
         for iline in self._stderr.splitlines():
             print(f"\t{iline}")
-
-        # update the fingerprint
-        self._fingerprint = hash_index_files(self._idxfile, self._tool, self._encoding)
 
         # check whether there are any errors
         if self._return_code != 0:

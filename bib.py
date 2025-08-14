@@ -124,7 +124,6 @@ def guess_bibfiles(filename: str, tool: str, encoding: str) -> list[Path]:
         try:
             txt = aux_path.read_text(encoding=encoding, errors="ignore")
         except Exception:
-            print(" Exception")
             continue
         if RE_BIB.search(txt):
             aux_files.append(aux_path)
@@ -149,6 +148,10 @@ def hash_bibfiles(filename: str, tool: str, encoding: str) -> str:
 
     # First, get the files to process
     bibfiles = guess_bibfiles(filename, tool, encoding)
+
+    # if there are no files to process return the empty string
+    if len(bibfiles) == 0:
+        return ""
 
     # in case biber is used, just return the md5 hash code of the bcf file
     if tool == "biber":
@@ -222,16 +225,22 @@ class Bibtool:
         # after every execution of the bibtool
         self._fingerprint = ""
 
+    def get_bibfiles(self) -> [str]:
+        """Return the files to process"""
+
+        return self._bib_files
+
     def get_fingerprint(self) -> str:
         """Return the fingerprint of all the bib directives"""
 
         return self._fingerprint
 
+    def get_rerun(self) -> bool:
+        """Return whether the processing has to be repeated"""
 
-    def get_bibfiles(self) -> [str]:
-        """Return the files to process"""
-
-        return self._bib_files
+        # compute the hash index of the files to process. If it is different
+        # than the current one then it is necessary to re-process again.
+        return hash_bibfiles(self._bibfile, self._tool, self._encoding) != self._fingerprint
 
     def get_tool(self) -> str:
         """Return the tool to use for processing the bib directives"""
@@ -288,7 +297,6 @@ class Bibtool:
 
         # leave a blank line
         print()
-
 
 
 # Local Variables:

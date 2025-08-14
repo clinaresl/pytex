@@ -43,7 +43,6 @@ def createArgParser():
                           help="Tool used to process the bib entries, if any is found. Only 'bibtex' and 'biber' are automatically supported if no option is given")
     optional.add_argument('-i', '--index',
                           type=str,
-                          default="makeidx",
                           help="Tool used to process the indices, if any is found, e.g., 'makeidx', 'splitindex', etc.")
     optional.add_argument('-e', '--encoding',
                           type=str,
