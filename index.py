@@ -35,7 +35,7 @@ WARNING_NO_INDEX_FILES = " No index files found with tool {}"
 
 # The following regular expression matches index directives which are extracted
 # to compute the fingerprint of the indices
-RE_INDEX = r'\\indexentry(?:\[[^]]+\])?\{.*\}\{.*\}\s*'
+RE_INDEX = re.compile(r'\\indexentry(?:\[[^]]+\])?\{.*\}\{.*\}\s*')
 
 # The following regular expressions intentionally distinguish between tagged and
 # untagged index entries
@@ -60,7 +60,7 @@ RE_UNTAGGED_INDEX_ENTRY = r'^\s*\\indexentry\{'
 #
 # 2. If there are several <filename>-*.idx, then return makeindex
 # -----------------------------------------------------------------------------
-def guess_index_tool(filename: str, encoding: str) -> str | None:
+def guess_index_tool(filename: Path, encoding: str) -> str | None:
     """Follow a number of simple thumb rules to guess the index tool to use:
 
          1. If there is a single <texfile>.idx:
@@ -76,9 +76,8 @@ def guess_index_tool(filename: str, encoding: str) -> str | None:
     """
 
     # Get a path to the index file and also to the different -*.idx files
-    base = Path(filename)
-    idx_main = base.with_suffix(".idx")
-    tagged_idx = Path.cwd().glob(f"{filename}-*.idx")
+    idx_main = filename.with_suffix(".idx")
+    tagged_idx = Path.cwd().glob(f"{filename.stem}-*.idx")
 
     # In case there is a single .idx file
     if idx_main.exists():
@@ -96,8 +95,8 @@ def guess_index_tool(filename: str, encoding: str) -> str | None:
 
     # In case there are several idx files, and at least one contains untagged
     # entries
-    if tagged_idx:
-        for idxfile in [p.with_suffix("").name for p in tagged_idx]:
+    if tagged_idx is not None:
+        for idxfile in tagged_idx:
             txt = idxfile.read_text(encoding=encoding, errors="replace")
 
             # if this file contains untagged entries, then suggest makeindex
@@ -123,7 +122,7 @@ def guess_index_tool(filename: str, encoding: str) -> str | None:
 #
 #    2.b. If there are several <filename>-*.idx then return those
 # -----------------------------------------------------------------------------
-def guess_index_files(filename: str, tool: str, encoding: str) -> list[Path]:
+def guess_index_files(filename: Path, tool: str, encoding: str) -> list[Path]:
     """Return a list of files to process with the given index tool
 
          1. If "splitindex" is given, then a single idx file is returned
@@ -138,8 +137,7 @@ def guess_index_files(filename: str, tool: str, encoding: str) -> list[Path]:
     """
 
     # get a path to the current filename and also its .idx cousing
-    base = Path(filename)
-    idx_main = base.with_suffix(".idx")
+    idx_main = filename.with_suffix(".idx")
 
     # in case splitindex is given, then a single idx file should be available.
     # Certainly, there should be one .idx file per index, but they should be all
@@ -149,7 +147,7 @@ def guess_index_files(filename: str, tool: str, encoding: str) -> list[Path]:
 
     # in case makeindex is given, then check whether there are a single file to
     # process or an arbitrary number of them
-    tagged_idx = Path('.').glob(f"{filename}-*.idx")
+    tagged_idx = Path.cwd().glob(f"{filename.stem}-*.idx")
     if idx_main.exists():
         txt = idx_main.read_text(encoding=encoding, errors="replace")
 
@@ -161,8 +159,8 @@ def guess_index_files(filename: str, tool: str, encoding: str) -> list[Path]:
 
     # In case there are several idx files
     aux_files = []
-    if tagged_idx:
-        for idxfile in [p.with_suffix("").name for p in tagged_idx]:
+    if tagged_idx is not None:
+        for idxfile in tagged_idx:
             txt = idxfile.read_text(encoding=encoding, errors="replace")
 
             # if this file contains untagged entries, then add it to the files
@@ -181,7 +179,7 @@ def guess_index_files(filename: str, tool: str, encoding: str) -> list[Path]:
 # indices. This blueprint is used later to determine whether the index tool has to
 # be run again, or not.
 # -----------------------------------------------------------------------------
-def hash_index_files(filename: str, tool: str, encoding: str) -> str:
+def hash_index_files(filename: Path, tool: str, encoding: str) -> str:
     """Return a md5 hash code that provides a blueprint of the last processing
        of the indices. This blueprint is used later to determine whether the
        index tool has to be run again, or not.
@@ -231,12 +229,10 @@ class Idxtool:
 
     """
 
-    def __init__(self, texfile: str, encoding: str, tool: str = "", quiet: bool = False):
+    def __init__(self, texfile: Path, encoding: str, tool: str = "", quiet: bool = False):
         """An idx tool is created for a specific LaTeX file which is expected to
-           produce relevant information when being processed, without the
-           suffix, e.g., "main" if the file being processed is "main.tex". The
-           contents of this file or others are interpreted according to the
-           given encoding
+           produce relevant information when being processed. The contents of
+           this file or others are interpreted according to the given encoding
 
            The user can specifically set a tool for processing the indices. If
            not given, then it is guessed from the evidence found in the current
@@ -252,7 +248,7 @@ class Idxtool:
 
         # also, initialize other attributes that might be required later for
         # other services
-        (self._stdout, self._stderr, self._return_code) = ("", "", None)
+        (self._stdout, self._stderr, self._return_code) = ("", "", 0)
 
         # guess the recommended tool for processing the indices and, in case the
         # user provided a selection, then verify it matches. If not, warn her
@@ -282,7 +278,7 @@ class Idxtool:
         return self._fingerprint
 
 
-    def get_idx_files(self) -> [str]:
+    def get_idx_files(self) -> list[Path]:
         """Return the files to process"""
 
         return self._idx_files
@@ -315,16 +311,10 @@ class Idxtool:
         # update the fingerprint
         self._fingerprint = hash_index_files(self._idxfile, self._tool, self._encoding)
 
-        # determine the command to run: makeindex can be optionally run "-q" to
-        # produce minimalist output, but anyway, it does not generate so much
-        # info so that I'm happy just to run the selected tool over the
-        # necessary files
-        cmd = f'{self._tool}'
-
         # first things first, run the tool in spite of the value of quiet
-        print(f' {cmd} {idxfile.stem}')
+        print(f' {self._tool} {idxfile.stem}')
         sproc = subprocess.Popen(
-            shlex.split(f'{cmd} {idxfile.stem}'),
+            shlex.split(f'{self._tool} {idxfile.stem}'),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )

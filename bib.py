@@ -55,7 +55,7 @@ RE_BIB = re.compile(r'\\bibdata\{.*?\}|\\citation\{.*?\}')
 # 3. Otherwise, it is assumed that there are no bib references and None is
 #    returned
 # -----------------------------------------------------------------------------
-def guess_bibtool(filename: str, encoding: str) -> str | None:
+def guess_bibtool(filename: Path, encoding: str) -> str | None:
     """Follow a number of simple thumb rules to guess the bib tool to use. In a
        nutshell,
 
@@ -69,16 +69,13 @@ def guess_bibtool(filename: str, encoding: str) -> str | None:
 
     """
 
-    base = Path(filename)
-
     # Check whether there is a file .bcf named after the name LaTeX file
-    bcf_path = base.with_suffix(".bcf")
+    bcf_path = filename.with_suffix(".bcf")
     if bcf_path.exists():
         return "biber"
 
     # Otherwise, check whether there are files with extension .aux that contain
     # bib directives
-    aux_files = []
     for aux_path in list(Path.cwd().glob("*.aux")):
 
         try:
@@ -102,7 +99,7 @@ def guess_bibtool(filename: str, encoding: str) -> str | None:
 # 2. If "bibtex" is given, then a number of ".aux" files with bib directives
 #    should be found
 # -----------------------------------------------------------------------------
-def guess_bibfiles(filename: str, tool: str, encoding: str) -> list[Path]:
+def guess_bibfiles(filename: Path, tool: str, encoding: str) -> list[Path]:
     """Return a list of bibunits to process with the given bibtool:
 
           1. If "biber" is given, then a ".bcf" file should be found
@@ -113,11 +110,10 @@ def guess_bibfiles(filename: str, tool: str, encoding: str) -> list[Path]:
     """
 
     aux_files = []
-    base = Path(filename)
 
     # If biber is given, then look for a .bcf file
     if tool == "biber":
-        bcf_path = base.with_suffix(".bcf")
+        bcf_path = filename.with_suffix(".bcf")
         if bcf_path.exists():
             aux_files.append(bcf_path)
         return aux_files
@@ -143,7 +139,7 @@ def guess_bibfiles(filename: str, tool: str, encoding: str) -> list[Path]:
 # bib entries. This blueprint is used later to determine whether the bib tool
 # has to be run again, or not.
 # -----------------------------------------------------------------------------
-def hash_bibfiles(filename: str, tool: str, encoding: str) -> str:
+def hash_bibfiles(filename: Path, tool: str, encoding: str) -> str:
     """Return a md5 hash code that provides a blueprint of the last processing
        of the bib entries. This blueprint is used later to determine whether the
        bib tool has to be run again, or not.
@@ -197,12 +193,11 @@ class Bibtool:
 
     """
 
-    def __init__(self, texfile: str, encoding: str, tool: str = "", quiet: bool = False):
+    def __init__(self, texfile: Path, encoding: str, tool: str = "", quiet: bool = False):
         """A bib interpreter is created for a specific LaTeX file which is
-           expected to produce relevant information when being processed,
-           without the suffix, e.g., "main" if the file being processed is
-           "main.tex". The contents of this file or others are interpreted
-           according to the given encoding
+           expected to produce relevant information when being processed. The
+           contents of this file or others are interpreted according to the
+           given encoding
 
            The user can specifically set a tool for processing the
            bibreferences. If not given, then it is guessed from the evidence
@@ -218,7 +213,7 @@ class Bibtool:
 
         # also, initialize other attributes that might be required later for
         # other services
-        (self._stdout, self._stderr, self._return_code) = ("", "", None)
+        (self._stdout, self._stderr, self._return_code) = ("", "", 0)
 
         # guess the recommended tool for processing the bib directives and, in
         # case the user provided a selection, then verify it matches. If not,
@@ -239,7 +234,7 @@ class Bibtool:
         # after every execution of the bibtool
         self._fingerprint = ""
 
-    def get_bibfiles(self) -> [str]:
+    def get_bibfiles(self) -> list[Path]:
         """Return the files to process"""
 
         return self._bib_files
@@ -261,7 +256,7 @@ class Bibtool:
 
         return self._tool
 
-    def run(self, bibfile: str) -> bool:
+    def run(self, bibfile: Path) -> bool:
         """Opens a pipe to the binary to process the specified bib file, and
            encodes both the standard output and error under the specified
            encoding
@@ -274,18 +269,11 @@ class Bibtool:
         if not self._tool or self._tool == "":
             return False
 
-        # determine the command to run
-        cmd = self._tool
-        if self._tool == "bibtex":
-            cmd = "bibtex"
-        elif self._tool == "biber":
-            cmd = "biber"
-        
         # first things first, run the tool and show the cmd in spite of the
         # value of quiet
-        print(f' {cmd} {bibfile.stem}')
+        print(f' {self._tool} {bibfile.stem}')
         sproc = subprocess.Popen(
-            shlex.split(f'{cmd} {bibfile.stem}'),
+            shlex.split(f'{self._tool} {bibfile.stem}'),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )

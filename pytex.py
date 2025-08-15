@@ -47,7 +47,7 @@ import index
 import message
 import process
 import sys
-import utils
+
 
 # constants
 # -----------------------------------------------------------------------------
@@ -71,82 +71,73 @@ ERROR_NO_PDF_FILE_GENERATED = " No pdf output has been generated"
 #
 # guess the main LaTeX file to process. The rules are simple:
 #
-#    1. If the user provided a filename ending in ".tex"/".latex" then that file
-#       is readily used
+#    1. The extension .tex is tried first (even if the user did not provide it)
 #
-#    2. Otherwise, it is checked whether a readable file exists after adding
-#       ".tex". If so, that file is used
-#
-#    3. If not, then the same is tried with the suffix ".latex"
+#    2. The extension .latex is tried after.
 #
 # If none of these rules work then None is returned
 # -----------------------------------------------------------------------------
-def guess_filename(basename: str) -> str:
+def guess_filename(basename: str) -> Path | None:
     """guess the main LaTeX file to process. The rules are simple:
 
-         1. If the user provided a filename ending in ".tex"/".latex" then that
-            file is readily used
+         1. The extension .tex is tried first (even if the user did not provide
+            it)
 
-         2. Otherwise, it is checked whether a readable file exists after adding
-            ".tex". If so, that file is used
+         2. The extension .latex is tried after.
 
-         3. If not, then the same is tried with the suffix ".latex"
 
-         If none of these rules work then None is returned
+       If none of these rules work then None is returned
 
     """
 
-    # verify the .tex file given exists and is accessible
-    filename = None
+    # is it a .tex file?
+    base = Path(basename)
+    texfile = base.with_suffix(".tex")
+    if texfile.exists() and os.access(texfile, os.R_OK):
+        return texfile
 
-    # First, is it a .tex file?
-    if (texfile := utils.get_filename(basename, '.tex')) and \
-       utils.check_file_exists(texfile) and \
-       utils.check_file_readable(texfile):
-        filename = texfile
+    # is it a .latex file?
+    latexfile = base.with_suffix(".latex")
+    if latexfile.exists() and os.access(latexfile, os.R_OK):
+        return latexfile
 
-    elif (texfile := utils.get_filename(basename, '.latex')) and \
-         utils.check_file_exists(texfile) and \
-         utils.check_file_readable(texfile):
-
-        # or is it a .latex file?
-        filename = texfile
-
-    # Return None unless the filename was properly guessed
-    return filename
-
+    return None
 
 # -----------------------------------------------------------------------------
 # run_latex
 #
-# This function opens a pipe to the binary to process the LaTeX file, compiles
-# the given file and decode both the standard output and error under the
-# specified encoding.
+# run the LaTeX processor
 # -----------------------------------------------------------------------------
-def run_latex(texfile: str,
-              processor: process.Processor, encoding: str):
-    """This function opens a pipe to the binary to process the LaTeX file,
-       compiles the given file and encodes both the standard output and error
-       under the specified encoding
+def run_latex(processor: process.Processor, quiet: bool):
+    """run the LaTeX processor
 
     """
 
     # process the LaTeX file
     processor.run()
 
+    if len(processor.get_errors()) > 0:
+        sys.exit(1)
+
+    # in case that any warning was generated, show the number in spite of
+    # the value of quiet
+    if processor.get_nbwarnings() > 0:
+        print(WARNING_NB_WARNINGS.format(processor.get_nbwarnings()))
+
+    # and leave a blank line
+    if (not quiet):
+        print()
+
 
 # -----------------------------------------------------------------------------
 # run_bibtex
 #
-# This function opens a pipe to the tool used to process bibunits and decode
-# both the standard output and error under the specified encoding
+# run the bib tool
 #
 # It returns whether a bib tool was effectively used or not
 # -----------------------------------------------------------------------------
-def run_bib(texfile: str,
-            tool: bib.Bibtool, encoding: str) -> bool:
-    """This function opens a pipe to the tool used to process bibunits and
-       decode both the standard output and error under the specified encoding
+def run_bib(tool: bib.Bibtool) -> bool:
+    """run the bib tool
 
        It returns whether a bib tool was effectively used or not
 
@@ -167,15 +158,12 @@ def run_bib(texfile: str,
 # -----------------------------------------------------------------------------
 # run_index
 #
-# This function opens a pipe to the tool used to process indices and decode both
-# the standard output and error under the specified encoding
+# run the index tool
 #
-# It returns whether a bib tool was effectively used or not
+# It returns whether an index tool was effectively used or not
 # -----------------------------------------------------------------------------
-def run_index(texfile: str,
-              tool: index.Idxtool, encoding: str) -> bool:
-    """This function opens a pipe to the tool used to process indices and decode
-       both the standard output and error under the specified encoding
+def run_index(tool: index.Idxtool) -> bool:
+    """run the index tool
 
        It returns whether a bib tool was effectively used or not
 
@@ -202,7 +190,7 @@ def run_index(texfile: str,
 #
 # In case an output is given, the resulting pdf file is renamed acordingly
 # -----------------------------------------------------------------------------
-def main(texfile: str,
+def main(texfile: Path,
          processor: str, bib_hint: str, index_hint: str, encoding: str,
          output: str, quiet: bool):
     """Automates processing a specific .tex file (named after texfile), which is
@@ -236,30 +224,19 @@ def main(texfile: str,
 
         # first things first, the unavoidable step is to process the texfile and, if
         # any errors happened, then abort execution
-        run_latex(texfile, compiler, encoding)
-        if len(compiler.get_errors()) > 0:
-            sys.exit(1)
-
-        # in case that any warning was generated, show the number in spite of
-        # the value of quiet
-        if compiler.get_nbwarnings() > 0:
-            print(WARNING_NB_WARNINGS.format(compiler.get_nbwarnings()))
-
-        # and leave a blank line
-        if (not quiet):
-            print()
+        run_latex(compiler, quiet)
 
         # In case the bibtool does not exist yet, create it, and then reuse it
         # in the following cycles.
         if not bibtool:
             bibtool = bib.Bibtool(texfile, encoding, bib_hint, quiet)
-        bib_exec = run_bib(texfile, bibtool, encoding)
+        bib_exec = run_bib(bibtool)
 
         # In case the index tool does not exist yet, create it, and then reuse
         # it in the following cycles
         if not idxtool:
             idxtool = index.Idxtool(texfile, encoding, index_hint, quiet)
-        index_exec = run_index(texfile, idxtool, encoding)
+        index_exec = run_index(idxtool)
 
         # and update the number of cycles executed
         nb_cycles += 1
@@ -272,8 +249,8 @@ def main(texfile: str,
     # in case an output filename was given, rename the output pdf file to the
     # name given
 
-    # First, verify the pdf exists
-    src=Path(texfile).with_suffix('.pdf')
+    # First, verify the output pdf exists
+    src = texfile.with_suffix('.pdf')
     if not src.exists():
         print(ERROR_NO_PDF_FILE_GENERATED)
         sys.exit(1)
@@ -281,13 +258,14 @@ def main(texfile: str,
     if output != "":
 
         # get a path to the output file and rename the pdf file generated
-        dst=Path(output).with_suffix('.pdf')
+        dst = Path(output).with_suffix('.pdf')
         src.rename(dst)
 
     else:
-        dst=src
+        dst = src
 
     print(INFO_PDF_FILE_GENERATED.format(dst))
+
 
 # main
 # -----------------------------------------------------------------------------
@@ -310,7 +288,7 @@ if __name__ == "__main__":
         encoding = os.environ.get("LC_ALL")
         if encoding is None:
 
-            # then resort to the best choice under UTF-8
+            # then resort to UTF-8
             encoding = "UTF-8"
 
     # show the encoding
