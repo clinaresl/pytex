@@ -32,8 +32,10 @@ import utils
 # constants
 # -----------------------------------------------------------------------------
 
+# regular expressions
+
 # Re-running regexp
-RE_RERUN = re.compile(r'(?:LaTeX|Package(?:\s+\w+)?)\s+Warning:.*\bRerun\b.*|LaTeX Warning:\s+There were undefined (?:references|citations)')
+RE_RERUN = re.compile(r'(?:LaTeX|Package(?:\s+\w+)?)\s+Warning:(.*\bRerun\b.*|\s+There were undefined (?:references|citations))')
 
 # Warning regexp
 RE_WARNING_INPUT = re.compile(r'\((?P<filename>\.[^\.]+)(?P<suffix>\.[^\.\s)]+)')
