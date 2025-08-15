@@ -297,10 +297,12 @@ class Bibtool:
         self._stderr = err_bytes.decode(encoding=self._encoding, errors="replace")
         self._return_code = sproc.returncode
 
-        # show all lines of the standard output indented unless quiet is True
-        if not self._quiet:
-            for iline in self._stdout.splitlines():
-                print(f"\t{iline}")
+        # show all lines of the standard output indented in spite of the value
+        # of quiet. The main reason is that parsing the output or the files
+        # generated is not easy and there is a risk that warnings/errors are
+        # ignored by the user
+        for iline in self._stdout.splitlines():
+            print(f"\t{iline}")
 
         # update the fingerprint
         self._fingerprint = hash_bibfiles(self._bibfile, self._tool, self._encoding)

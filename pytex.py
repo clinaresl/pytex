@@ -57,6 +57,7 @@ INFO_PDF_FILE_GENERATED = " {} generated"
 
 # Warning messages
 WARNING_MAX_NB_CYCLES = " The maximum number of cycles, {}, has been reached and the processor still recommends re-running the files"
+WARNING_NB_WARNINGS = " Number of warnings: {}"
 
 # Warning messages
 ERROR_NO_PDF_FILE_GENERATED = " No pdf output has been generated"
@@ -219,7 +220,7 @@ def main(texfile: str,
     max_nb_cycles = 5
 
     # create a LaTeX processor
-    processor = process.Processor(texfile, processor, encoding, quiet)
+    compiler = process.Processor(texfile, processor, encoding, quiet)
 
     # initialize the bib/index tools to None
     bibtool, idxtool = None, None
@@ -230,14 +231,23 @@ def main(texfile: str,
     # until the processor is happy or five full cycles have been consumed. This
     # might happen with some "pathological" docs. Also, if a bib/index tool was
     # used in the last iteration, then force a new processing stage
-    while (processor.get_rerun() or bib_exec or index_exec) and \
+    while (compiler.get_rerun() or bib_exec or index_exec) and \
           nb_cycles < max_nb_cycles:
 
         # first things first, the unavoidable step is to process the texfile and, if
         # any errors happened, then abort execution
-        run_latex(texfile, processor, encoding)
-        if len(processor.get_errors()) > 0:
+        run_latex(texfile, compiler, encoding)
+        if len(compiler.get_errors()) > 0:
             sys.exit(1)
+
+        # in case that any warning was generated, show the number in spite of
+        # the value of quiet
+        if compiler.get_nbwarnings() > 0:
+            print(WARNING_NB_WARNINGS.format(compiler.get_nbwarnings()))
+
+        # and leave a blank line
+        if (not quiet):
+            print()
 
         # In case the bibtool does not exist yet, create it, and then reuse it
         # in the following cycles.
@@ -256,7 +266,7 @@ def main(texfile: str,
 
     # show a warning in case the processor insists in re-running even if the
     # maximum number of cycles was reached
-    if processor.get_rerun() and nb_cycles >= max_nb_cycles:
+    if compiler.get_rerun() and nb_cycles >= max_nb_cycles:
         print(WARNING_MAX_NB_CYCLES.format(max_nb_cycles))
 
     # in case an output filename was given, rename the output pdf file to the
