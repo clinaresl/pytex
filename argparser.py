@@ -47,6 +47,10 @@ def createArgParser():
     optional.add_argument('-e', '--encoding',
                           type=str,
                           help="Encoding used to capture the output produced by the different tools. If none is given, the contents of the env variable 'LC_ALL' are used")
+    optional.add_argument('-o', '--output',
+                          default="",
+                          type=str,
+                          help="Name of the pdf generated file. If none is given, it will be named after the input filename")
 
     # and return the parser
     return parser

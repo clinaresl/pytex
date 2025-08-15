@@ -52,8 +52,14 @@ import utils
 # constants
 # -----------------------------------------------------------------------------
 
+# Info messages
+INFO_PDF_FILE_GENERATED = " {} generated"
+
 # Warning messages
 WARNING_MAX_NB_CYCLES = " The maximum number of cycles, {}, has been reached and the processor still recommends re-running the files"
+
+# Warning messages
+ERROR_NO_PDF_FILE_GENERATED = " No pdf output has been generated"
 
 
 # functions
@@ -177,7 +183,7 @@ def run_index(texfile: str,
 # It also guesses whether to process the bib references and/or the index tables
 # -----------------------------------------------------------------------------
 def main(texfile: str,
-         processor: str, bib_hint: str, index_hint: str, encoding: str):
+         processor: str, bib_hint: str, index_hint: str, encoding: str, output: str):
     """Automates processing a specific .tex file (named after texfile), which is
     guaranteed to exist and to be readable
 
@@ -226,6 +232,21 @@ def main(texfile: str,
     if processor.get_rerun() and nb_cycles >= max_nb_cycles:
         print(WARNING_MAX_NB_CYCLES.format(max_nb_cycles))
 
+    # in case an output filename was given, rename the output pdf file to the
+    # name given
+    if output != "":
+
+        # First, verify the pdf exists
+        src=Path(texfile).with_suffix('.pdf')
+        if not src.exists():
+            print(ERROR_NO_PDF_FILE_GENERATED)
+            sys.exit(1)
+
+        # get a path to the output file and rename the pdf file generated
+        dst=Path(output).with_suffix('.pdf')
+        src.rename(dst)
+
+        print(INFO_PDF_FILE_GENERATED.format(dst))
 
 # main
 # -----------------------------------------------------------------------------
@@ -255,7 +276,7 @@ if __name__ == "__main__":
     print(f" Using encoding {encoding}")
 
     # invoke the main service of this #!/usr/bin/env python
-    main(filename, cli.processor, cli.bib, cli.index, encoding)
+    main(filename, cli.processor, cli.bib, cli.index, encoding, cli.output)
 
 
 # Local Variables:
