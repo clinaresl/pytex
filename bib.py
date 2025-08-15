@@ -197,7 +197,7 @@ class Bibtool:
 
     """
 
-    def __init__(self, texfile: str, encoding: str, tool: str = ""):
+    def __init__(self, texfile: str, encoding: str, tool: str = "", quiet: bool = False):
         """A bib interpreter is created for a specific LaTeX file which is
            expected to produce relevant information when being processed,
            without the suffix, e.g., "main" if the file being processed is
@@ -208,10 +208,13 @@ class Bibtool:
            bibreferences. If not given, then it is guessed from the evidence
            found in the current working directory.
 
+           In case quiet is True, then all output messages but the most
+           important ones are skipped
+
         """
 
         # copy the attributes
-        (self._bibfile, self._encoding, self._tool) = (texfile, encoding, tool)
+        (self._bibfile, self._encoding, self._tool, self._quiet) = (texfile, encoding, tool, quiet)
 
         # also, initialize other attributes that might be required later for
         # other services
@@ -276,7 +279,8 @@ class Bibtool:
         elif self._tool == "biber":
             cmd = "biber"
         
-        # first things first, run the tool
+        # first things first, run the tool and show the cmd in spite of the
+        # value of quiet
         print(f' {cmd} {bibfile.stem}')
         sproc = subprocess.Popen(
             shlex.split(f'{cmd} {bibfile.stem}'),
@@ -291,9 +295,10 @@ class Bibtool:
         self._stderr = err_bytes.decode(encoding=self._encoding, errors="replace")
         self._return_code = sproc.returncode
 
-        # show all lines of the standard output indented
-        for iline in self._stdout.splitlines():
-            print(f"\t{iline}")
+        # show all lines of the standard output indented unless quiet is True
+        if not self._quiet:
+            for iline in self._stdout.splitlines():
+                print(f"\t{iline}")
 
         # update the fingerprint
         self._fingerprint = hash_bibfiles(self._bibfile, self._tool, self._encoding)
@@ -304,10 +309,13 @@ class Bibtool:
             for iline in self._stderr.splitlines():
                 print(f"\t{iline}")
         else:
-            print(" No errors found")
+
+            if not self._quiet:
+                print(" No errors found")
 
         # leave a blank line
-        print()
+        if not self._quiet:
+            print()
 
 
 # Local Variables:

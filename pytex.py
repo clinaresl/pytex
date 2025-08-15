@@ -181,14 +181,19 @@ def run_index(texfile: str,
 # guaranteed to exist and to be readable
 #
 # It also guesses whether to process the bib references and/or the index tables
+#
+# In case an output is given, the resulting pdf file is renamed acordingly
 # -----------------------------------------------------------------------------
 def main(texfile: str,
-         processor: str, bib_hint: str, index_hint: str, encoding: str, output: str):
+         processor: str, bib_hint: str, index_hint: str, encoding: str,
+         output: str, quiet: bool):
     """Automates processing a specific .tex file (named after texfile), which is
-    guaranteed to exist and to be readable
+       guaranteed to exist and to be readable
 
-    It also guesses whether to process the bib references and/or the index
-    tables and what tools to do so
+       It also guesses whether to process the bib references and/or the index
+       tables and what tools to do so
+
+       In case an output is given, the resulting pdf file is renamed acordingly
 
     """
 
@@ -197,7 +202,7 @@ def main(texfile: str,
     max_nb_cycles = 5
 
     # create a LaTeX processor
-    processor = process.Processor(texfile, processor, encoding)
+    processor = process.Processor(texfile, processor, encoding, quiet)
 
     # initialize the bib/index tools to None
     bibtool, idxtool = None, None
@@ -215,13 +220,13 @@ def main(texfile: str,
         # In case the bibtool does not exist yet, create it, and then reuse it
         # in the following cycles.
         if not bibtool:
-            bibtool = bib.Bibtool(texfile, encoding, bib_hint)
+            bibtool = bib.Bibtool(texfile, encoding, bib_hint, quiet)
         run_bib(texfile, bibtool, encoding)
 
         # In case the index tool does not exist yet, create it, and then reuse
         # it in the following cycles
         if not idxtool:
-            idxtool = index.Idxtool(texfile, encoding, index_hint)
+            idxtool = index.Idxtool(texfile, encoding, index_hint, quiet)
         run_index(texfile, idxtool, encoding)
 
         # and update the number of cycles executed
@@ -234,19 +239,23 @@ def main(texfile: str,
 
     # in case an output filename was given, rename the output pdf file to the
     # name given
-    if output != "":
 
-        # First, verify the pdf exists
-        src=Path(texfile).with_suffix('.pdf')
-        if not src.exists():
-            print(ERROR_NO_PDF_FILE_GENERATED)
-            sys.exit(1)
+    # First, verify the pdf exists
+    src=Path(texfile).with_suffix('.pdf')
+    if not src.exists():
+        print(ERROR_NO_PDF_FILE_GENERATED)
+        sys.exit(1)
+
+    if output != "":
 
         # get a path to the output file and rename the pdf file generated
         dst=Path(output).with_suffix('.pdf')
         src.rename(dst)
 
-        print(INFO_PDF_FILE_GENERATED.format(dst))
+    else:
+        dst=src
+
+    print(INFO_PDF_FILE_GENERATED.format(dst))
 
 # main
 # -----------------------------------------------------------------------------
@@ -276,7 +285,7 @@ if __name__ == "__main__":
     print(f" Using encoding {encoding}")
 
     # invoke the main service of this #!/usr/bin/env python
-    main(filename, cli.processor, cli.bib, cli.index, encoding, cli.output)
+    main(filename, cli.processor, cli.bib, cli.index, encoding, cli.output, cli.quiet)
 
 
 # Local Variables:

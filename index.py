@@ -231,7 +231,7 @@ class Idxtool:
 
     """
 
-    def __init__(self, texfile: str, encoding: str, tool: str = ""):
+    def __init__(self, texfile: str, encoding: str, tool: str = "", quiet: bool = False):
         """An idx tool is created for a specific LaTeX file which is expected to
            produce relevant information when being processed, without the
            suffix, e.g., "main" if the file being processed is "main.tex". The
@@ -242,10 +242,13 @@ class Idxtool:
            not given, then it is guessed from the evidence found in the current
            working directory.
 
+           In case quiet is True, then all output messages but the most
+           important ones are skipped
+
         """
 
         # copy the attributes
-        (self._idxfile, self._encoding, self._tool) = (texfile, encoding, tool)
+        (self._idxfile, self._encoding, self._tool, self._quiet) = (texfile, encoding, tool, quiet)
 
         # also, initialize other attributes that might be required later for
         # other services
@@ -316,7 +319,7 @@ class Idxtool:
         # necessary files
         cmd = f'{self._tool}'
 
-        # first things first, run the tool
+        # first things first, run the tool in spite of the value of quiet
         print(f' {cmd} {idxfile.stem}')
         sproc = subprocess.Popen(
             shlex.split(f'{cmd} {idxfile.stem}'),
@@ -331,20 +334,23 @@ class Idxtool:
         self._stderr = err_bytes.decode(encoding=self._encoding, errors="replace")
         self._return_code = sproc.returncode
 
-        # show all lines of the standard output indented
-        for iline in self._stdout.splitlines():
-            print(f"\t{iline}")
-        for iline in self._stderr.splitlines():
-            print(f"\t{iline}")
+        # show all lines of the standard output indented unless quiet is True
+        if not self._quiet:
+            for iline in self._stdout.splitlines():
+                print(f"\t{iline}")
+            for iline in self._stderr.splitlines():
+                print(f"\t{iline}")
 
         # check whether there are any errors
         if self._return_code != 0:
             print("Errors found!")
         else:
-            print(" No errors found")
+            if not self._quiet:
+                print(" No errors found")
 
         # leave a blank line
-        print()
+        if not self._quiet:
+            print()
 
 
 # Local Variables:

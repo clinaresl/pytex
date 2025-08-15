@@ -51,6 +51,9 @@ def createArgParser():
                           default="",
                           type=str,
                           help="Name of the pdf generated file. If none is given, it will be named after the input filename")
+    optional.add_argument('-q', '--quiet',
+                          action="store_true",
+                          help="Name of the pdf generated file. If none is given, it will be named after the input filename")
 
     # and return the parser
     return parser
