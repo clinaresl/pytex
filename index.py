@@ -304,11 +304,13 @@ class Idxtool:
            encodes both the standard output and error under the specified
            encoding
 
+           It returns whether a bib tool was effectively used or not
+
         """
 
         # if no indices have to be processed return immediately
         if not self._tool or self._tool == "":
-            return
+            return False
 
         # update the fingerprint
         self._fingerprint = hash_index_files(self._idxfile, self._tool, self._encoding)
@@ -351,6 +353,8 @@ class Idxtool:
         # leave a blank line
         if not self._quiet:
             print()
+
+        return True
 
 
 # Local Variables:

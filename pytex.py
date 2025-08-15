@@ -139,41 +139,58 @@ def run_latex(texfile: str,
 #
 # This function opens a pipe to the tool used to process bibunits and decode
 # both the standard output and error under the specified encoding
+#
+# It returns whether a bib tool was effectively used or not
 # -----------------------------------------------------------------------------
 def run_bib(texfile: str,
-            tool: bib.Bibtool, encoding: str):
+            tool: bib.Bibtool, encoding: str) -> bool:
     """This function opens a pipe to the tool used to process bibunits and
        decode both the standard output and error under the specified encoding
 
+       It returns whether a bib tool was effectively used or not
+
     """
+
+    # -- init
+    bib_exec = False
 
     # check first whether it is necessary to process the files
     if tool.get_rerun():
 
         # get all bibunits that have to be processed
         for bibunit in tool.get_bibfiles():
-            tool.run(bibunit)
+            bib_exec = bib_exec or tool.run(bibunit)
 
+    return bib_exec
 
 # -----------------------------------------------------------------------------
 # run_index
 #
 # This function opens a pipe to the tool used to process indices and decode both
 # the standard output and error under the specified encoding
+#
+# It returns whether a bib tool was effectively used or not
 # -----------------------------------------------------------------------------
 def run_index(texfile: str,
-              tool: index.Idxtool, encoding: str):
+              tool: index.Idxtool, encoding: str) -> bool:
     """This function opens a pipe to the tool used to process indices and decode
        both the standard output and error under the specified encoding
 
+       It returns whether a bib tool was effectively used or not
+
     """
+
+    # -- init
+    index_exec = False
 
     # check first whether it is necessary to process the files
     if tool.get_rerun():
 
         # get all index files that have to be processed
         for idxunit in tool.get_idx_files():
-            tool.run(idxunit)
+            index_exec = index_exec or tool.run(idxunit)
+
+    return index_exec
 
 
 # -----------------------------------------------------------------------------
@@ -207,9 +224,14 @@ def main(texfile: str,
     # initialize the bib/index tools to None
     bibtool, idxtool = None, None
 
+    # and also initialize the executions of the bib/index tools
+    bib_exec, index_exec = False, False
+
     # until the processor is happy or five full cycles have been consumed. This
-    # might happen with some "pathological" docs
-    while processor.get_rerun() and nb_cycles < max_nb_cycles:
+    # might happen with some "pathological" docs. Also, if a bib/index tool was
+    # used in the last iteration, then force a new processing stage
+    while (processor.get_rerun() or bib_exec or index_exec) and \
+          nb_cycles < max_nb_cycles:
 
         # first things first, the unavoidable step is to process the texfile and, if
         # any errors happened, then abort execution
@@ -221,13 +243,13 @@ def main(texfile: str,
         # in the following cycles.
         if not bibtool:
             bibtool = bib.Bibtool(texfile, encoding, bib_hint, quiet)
-        run_bib(texfile, bibtool, encoding)
+        bib_exec = run_bib(texfile, bibtool, encoding)
 
         # In case the index tool does not exist yet, create it, and then reuse
         # it in the following cycles
         if not idxtool:
             idxtool = index.Idxtool(texfile, encoding, index_hint, quiet)
-        run_index(texfile, idxtool, encoding)
+        index_exec = run_index(texfile, idxtool, encoding)
 
         # and update the number of cycles executed
         nb_cycles += 1

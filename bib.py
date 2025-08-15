@@ -261,16 +261,18 @@ class Bibtool:
 
         return self._tool
 
-    def run(self, bibfile: str):
+    def run(self, bibfile: str) -> bool:
         """Opens a pipe to the binary to process the specified bib file, and
            encodes both the standard output and error under the specified
            encoding
+
+           It returns whether a bib tool was effectively used or not
 
         """
 
         # if no bib entries have to be processed return immediately
         if not self._tool or self._tool == "":
-            return
+            return False
 
         # determine the command to run
         cmd = self._tool
@@ -316,6 +318,8 @@ class Bibtool:
         # leave a blank line
         if not self._quiet:
             print()
+
+        return True
 
 
 # Local Variables:
