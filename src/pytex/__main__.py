@@ -38,15 +38,14 @@ If you ever meet Stefan Schinkel, please invite him to two beers!
 # imports
 # -----------------------------------------------------------------------------
 import os
-import re
+import sys
+
 from pathlib import Path
 
-import argparser
-import bib
-import index
-import message
-import process
-import sys
+from . import argparser
+from . import bib
+from . import index
+from . import process
 
 
 # constants
@@ -190,9 +189,9 @@ def run_index(tool: index.Idxtool) -> bool:
 #
 # In case an output is given, the resulting pdf file is renamed acordingly
 # -----------------------------------------------------------------------------
-def main(texfile: Path,
-         processor: str, bib_hint: str, index_hint: str, encoding: str,
-         output: str, quiet: bool):
+def run_pipeline(texfile: Path,
+                 processor: str, bib_hint: str, index_hint: str, encoding: str,
+                 output: str, quiet: bool):
     """Automates processing a specific .tex file (named after texfile), which is
        guaranteed to exist and to be readable
 
@@ -267,9 +266,13 @@ def main(texfile: Path,
     print(INFO_PDF_FILE_GENERATED.format(dst))
 
 
-# main
 # -----------------------------------------------------------------------------
-if __name__ == "__main__":
+# main
+#
+# Main entry point
+# -----------------------------------------------------------------------------
+def main():
+    """Main entry point"""
 
     # process the arguments
     cli = argparser.createArgParser().parse_args()
@@ -295,7 +298,13 @@ if __name__ == "__main__":
     print(f" Using encoding {encoding}")
 
     # invoke the main service of this #!/usr/bin/env python
-    main(filename, cli.processor, cli.bib, cli.index, encoding, cli.output, cli.quiet)
+    run_pipeline(filename, cli.processor, cli.bib, cli.index, encoding, cli.output, cli.quiet)
+
+
+# main
+# -----------------------------------------------------------------------------
+if __name__ == "__main__":
+    main()
 
 
 # Local Variables:

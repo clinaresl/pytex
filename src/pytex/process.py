@@ -26,7 +26,7 @@ import subprocess
 from collections import defaultdict
 from pathlib import Path
 
-import message
+from . import message
 
 # constants
 # -----------------------------------------------------------------------------

@@ -16,7 +16,6 @@ Command-line interface parser
 # imports
 # -----------------------------------------------------------------------------
 import argparse
-import version
 
 # -----------------------------------------------------------------------------
 # create a command parser to parse all params passed to the script program
@@ -25,7 +24,7 @@ def createArgParser():
     """create a command parser to parse all params passed to the script program"""
 
     # initialize a parser
-    parser = argparse.ArgumentParser(description=version.__description__)
+    parser = argparse.ArgumentParser(description="LaTeX→PDF pipeline automation")
 
     # Group of mandatory arguments
     mandatory = parser.add_argument_group("Mandatory arguments", "The following arguments are mandatory and they must be provided:")
