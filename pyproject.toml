@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pytex"
+version = "1.0.0"
+description = "LaTeX→PDF pipeline automation"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{ name = "Carlos Linares López" }]
+requires-python = ">=3.9"
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Environment :: Console",
+  "Topic :: Text Processing :: Markup :: LaTeX"
+]
+
+[project.scripts]
+pytex = "pytex.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pytex"]
