@@ -52,14 +52,8 @@ import utils
 # constants
 # -----------------------------------------------------------------------------
 
-# Info messages
-INFO_NO_ERROR_FOUND = " No errors found"
-
 # Warning messages
 WARNING_MAX_NB_CYCLES = " The maximum number of cycles, {}, has been reached and the processor still recommends re-running the files"
-
-# Error messages
-ERROR_NO_ERROR_FOUND = " No errors were found, but the return code is non-null. Inspect the .log file!"
 
 
 # functions
@@ -121,59 +115,17 @@ def guess_filename(basename: str) -> str:
 # This function opens a pipe to the binary to process the LaTeX file, compiles
 # the given file and decode both the standard output and error under the
 # specified encoding.
-#
-# It returns a processor which contains all the information that resulted from
-# processing the texfile
 # -----------------------------------------------------------------------------
 def run_latex(texfile: str,
-              processor: process.Processor, encoding: str) -> process.Processor:
+              processor: process.Processor, encoding: str):
     """This function opens a pipe to the binary to process the LaTeX file,
        compiles the given file and encodes both the standard output and error
        under the specified encoding
-
-       It returns a processor which contains all the information that resulted
-       from processing the texfile
 
     """
 
     # process the LaTeX file
     processor.run()
-
-    # process the output to find all warnings and errors, if any
-    processor.process_warnings()
-    processor.process_errors()
-
-    # and show all warnings on the standard console indexed by the file where
-    # they were detected
-    for ifile in processor.get_input_files():
-        if len(processor.get_warnings(ifile)) > 0:
-            if ifile == "":
-                print(" Preamble:")
-            else:
-                print(f" {ifile}")
-            print(f"{processor.get_warnings(ifile):proc_warning}")
-
-    # and finally, in case there are any errors show them on the standard output
-    if len(processor.get_errors()) > 0:
-        print(" Errors found!")
-        for ierror in processor.get_errors():
-            print(f'{ierror:proc_error}')
-
-    # if no errors were found, observe the return code anyway. Only if no errors
-    # are found and the return code is zero, everything is fine. Otherwise,
-    # maybe the processor was not able to find errors, but the user must be
-    # warned
-    else:
-        if processor.get_return_code() != 0:
-            print(ERROR_NO_ERROR_FOUND)
-        else:
-            print(INFO_NO_ERROR_FOUND)
-
-    # leave a blank line
-    print()
-
-    # and return the processor
-    return processor
 
 
 # -----------------------------------------------------------------------------
@@ -239,19 +191,19 @@ def main(texfile: str,
     max_nb_cycles = 5
 
     # create a LaTeX processor
-    compiler = process.Processor(texfile, processor, encoding)
+    processor = process.Processor(texfile, processor, encoding)
 
     # initialize the bib/index tools to None
     bibtool, idxtool = None, None
 
     # until the processor is happy or five full cycles have been consumed. This
     # might happen with some "pathological" docs
-    while compiler.get_rerun() and nb_cycles < max_nb_cycles:
+    while processor.get_rerun() and nb_cycles < max_nb_cycles:
 
         # first things first, the unavoidable step is to process the texfile and, if
         # any errors happened, then abort execution
-        compiler = run_latex(texfile, compiler, encoding)
-        if len(compiler.get_errors()) > 0:
+        run_latex(texfile, processor, encoding)
+        if len(processor.get_errors()) > 0:
             sys.exit(1)
 
         # In case the bibtool does not exist yet, create it, and then reuse it
@@ -271,7 +223,7 @@ def main(texfile: str,
 
     # show a warning in case the processor insists in re-running even if the
     # maximum number of cycles was reached
-    if compiler.get_rerun() and nb_cycles >= max_nb_cycles:
+    if processor.get_rerun() and nb_cycles >= max_nb_cycles:
         print(WARNING_MAX_NB_CYCLES.format(max_nb_cycles))
 
 

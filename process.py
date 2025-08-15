@@ -32,6 +32,13 @@ import utils
 # constants
 # -----------------------------------------------------------------------------
 
+# Info messages
+INFO_NO_ERROR_FOUND = " No errors found"
+
+# Error messages
+ERROR_NO_ERROR_FOUND = " No errors were found, but the return code is non-null. Inspect the .log file!"
+
+
 # regular expressions
 
 # Re-running regexp
@@ -262,6 +269,36 @@ class Processor:
         log_file = base.with_suffix(".log")
         txt = log_file.read_text(encoding=self._encoding, errors="ignore")
         self._rerun = RE_RERUN.search(txt) is not None
+
+        # process the output to find all warnings and errors, if any
+        self.process_warnings()
+        self.process_errors()
+
+        # and show all warnings on the standard console indexed by the file where
+        # they were detected
+        for ifile in self.get_input_files():
+            if len(self.get_warnings(ifile)) > 0:
+                if ifile == "":
+                    print(" Preamble:")
+                else:
+                    print(f" {ifile}")
+                print(f"{self.get_warnings(ifile):proc_warning}")
+
+        # and finally, in case there are any errors show them on the standard output
+        if len(self.get_errors()) > 0:
+            print(" Errors found!")
+            for ierror in self.get_errors():
+                print(f'{ierror:proc_error}')
+
+        # if no errors were found, observe the return code anyway. Only if no errors
+        # are found and the return code is zero, everything is fine. Otherwise,
+        # maybe the processor was not able to find errors, but the user must be
+        # warned
+        else:
+            if self.get_return_code() != 0:
+                print(ERROR_NO_ERROR_FOUND)
+            else:
+                print(INFO_NO_ERROR_FOUND)
 
         # leave a blank line
         print()
