@@ -202,8 +202,7 @@ def run_pipeline(texfile: Path,
 
     """
 
-    # count the number of cycles, and set the maximum number of cycles
-    nb_cycles = 0
+    # set the maximum number of cycles
     max_nb_cycles = 5
 
     # create a LaTeX processor
@@ -219,7 +218,7 @@ def run_pipeline(texfile: Path,
     # might happen with some "pathological" docs. Also, if a bib/index tool was
     # used in the last iteration, then force a new processing stage
     while (compiler.get_rerun() or bib_exec or index_exec) and \
-          nb_cycles < max_nb_cycles:
+          compiler.get_nbcycles() < max_nb_cycles:
 
         # first things first, the unavoidable step is to process the texfile and, if
         # any errors happened, then abort execution
@@ -237,12 +236,9 @@ def run_pipeline(texfile: Path,
             idxtool = index.Idxtool(texfile, encoding, index_hint, quiet)
         index_exec = run_index(idxtool)
 
-        # and update the number of cycles executed
-        nb_cycles += 1
-
     # show a warning in case the processor insists in re-running even if the
     # maximum number of cycles was reached
-    if compiler.get_rerun() and nb_cycles >= max_nb_cycles:
+    if compiler.get_rerun() and compiler.get_nbcycles() >= max_nb_cycles:
         print(WARNING_MAX_NB_CYCLES.format(max_nb_cycles))
 
     # in case an output filename was given, rename the output pdf file to the

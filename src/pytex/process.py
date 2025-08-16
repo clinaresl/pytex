@@ -208,10 +208,19 @@ class Processor:
         # processed at least once
         self._rerun = True
 
+        # Finally, this instance also keeps track of the number of times it
+        # processed the given tex file
+        self._nbcycles = 0
+
     def get_errors(self) -> list[message.Message]:
         """Return all errors generated during this process"""
 
         return self._errors
+
+    def get_nbcycles(self) -> int:
+        """Return the number of times this processor was applied to the given texfile"""
+
+        return self._nbcycles
 
     def get_input_files(self) ->list[str]:
         """Return the names of all files being processed in the same order they
@@ -250,6 +259,10 @@ class Processor:
            specified encoding
 
         """
+
+        # first, and foremost, increment the number of times this texfile was
+        # processed
+        self._nbcycles += 1
 
         # show the command to run even if quiet is True
         print(f' {self._processor} {self._texfile}')
