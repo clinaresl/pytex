@@ -19,8 +19,12 @@ and it provides a meaningful view of the important messages generated:
 - If a bib or index tool is required to be executed it shows the entire output
   since this is usually very manageable in size.
 
-It is very similar to `rubber` with the exception that it provides support for
-index creation.
+It is very similar to:
+
+- `rubber` with the exception that it provides automated support for index
+  creation.
+- `latexmk` with the exception that it parses the output generated and provides
+  understandable information.
 
 Hence, from a given `.tex` file it runs a processor (e.g., `latex`, `pdflatex`,
 `xelatex`, etc.), and it immediately after guesses the following steps: whether
