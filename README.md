@@ -54,7 +54,7 @@ from the root directory of `pytex`. Installing the software will make the script
 of the main `.tex` file to process, e.g.:
 
 ``` sh
- $ python main
+ $ pytex main
  Using encoding UTF-8
  pdflatex main.tex
  ./examen.sty
