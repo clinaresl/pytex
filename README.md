@@ -174,6 +174,10 @@ possible to provide the name of the resulting PDF file with `--output`. If it is
 not given, the resulting PDF file will be named after the main tex file
 processed.
 
+# Acknowledgements
+
+To Stefan Schenkel, whose work I used for several years in many of my projects.
+
 # License
 
 MIT License
