@@ -176,7 +176,7 @@ processed.
 
 # Acknowledgements
 
-To Stefan Schenkel, whose work I used for several years in many of my projects.
+To Stefan Schinkel, whose work I used for several years in many of my projects.
 
 # License
 
