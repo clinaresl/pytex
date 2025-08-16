@@ -54,6 +54,7 @@ from the root directory of `pytex`. Installing the software will make the script
 of the main `.tex` file to process, e.g.:
 
 ``` sh
+ $ python main
  Using encoding UTF-8
  pdflatex main.tex
  ./examen.sty
@@ -109,9 +110,11 @@ of the main `.tex` file to process, e.g.:
 In this case, the same file (`main.tex`) had to be processed three times. In
 each pass, it provides information about the warnings generated under the file where they were found.
 
-It is also possible to avoid all these messages with `--quiet`:
+It is also possible to avoid all these messages with `--quiet` (the following
+example being run on a different case than the previous one):
 
 ``` sh
+ $ pytex main --quiet
  Using encoding UTF-8
  pdflatex main.tex
  Number of warnings: 28
