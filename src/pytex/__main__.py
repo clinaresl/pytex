@@ -124,7 +124,7 @@ def run_latex(processor: process.Processor, quiet: bool):
         print(WARNING_NB_WARNINGS.format(processor.get_nbwarnings()))
 
     # and leave a blank line
-    if (not quiet):
+    if not quiet:
         print()
 
 
@@ -271,7 +271,7 @@ def main():
     """Main entry point"""
 
     # process the arguments
-    cli = argparser.createArgParser().parse_args()
+    cli = argparser.create_arg_parser().parse_args()
 
     # guess the full name of the LaTeX file to process
     if not (filename := guess_filename(cli.texfile)):

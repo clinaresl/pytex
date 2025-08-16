@@ -21,7 +21,6 @@ __description__ = "LaTeX→PDF pipeline automation"
 # expose main entry point
 from . import __main__
 
-__all__ = ["main"]
 
 
 # Local Variables:

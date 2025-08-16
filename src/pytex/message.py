@@ -72,7 +72,7 @@ class Message:
                 return f'\t[{self._mode} Warning] {self._info}'
             return f'\t[{self._mode} {self._name} Warning] {self._info}'
 
-        elif spec == "proc_error":
+        if spec == "proc_error":
             return f'{self._path}:{self._line} {self._info}'
 
         raise ValueError(ERROR_UNKNOWN_MESSAGE_SPECIFICATION.format(spec))

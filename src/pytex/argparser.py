@@ -20,7 +20,7 @@ import argparse
 # -----------------------------------------------------------------------------
 # create a command parser to parse all params passed to the script program
 # -----------------------------------------------------------------------------
-def createArgParser():
+def create_arg_parser():
     """create a command parser to parse all params passed to the script program"""
 
     # initialize a parser

@@ -20,7 +20,6 @@ standard output and the standard error
 import re
 import os
 import shlex
-import sys
 import subprocess
 
 from collections import defaultdict
@@ -90,7 +89,7 @@ class ProcessorWarnings:
 
         if other.get_mode() == "LaTeX":
             return other in self._latex[other.get_name()]
-        elif other.get_mode() == "Package":
+        if other.get_mode() == "Package":
             return other in self._package[other.get_name()]
         if other.get_mode() == "Class":
             return other in self._class[other.get_name()]
