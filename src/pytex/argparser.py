@@ -46,6 +46,12 @@ def create_arg_parser():
     optional.add_argument('-e', '--encoding',
                           type=str,
                           help="Encoding used to capture the output produced by the different tools. If none is given, the contents of the env variable 'LC_ALL' are used")
+    optional.add_argument('-x', '--clear',
+                          action="store_true",
+                          help="If given, no processing takes place and all ancilliary files generated for the given texfile are automatically removed. No confirmation is requested")
+    optional.add_argument('-X', '--delete',
+                          action="store_true",
+                          help="If given, no processing takes place and all ancilliary files generated for the given texfile and the final pdf are automatically removed, unless the name of the resulting pdf was changed with --output. No confirmation is requested")
     optional.add_argument('-o', '--output',
                           default="",
                           type=str,

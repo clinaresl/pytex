@@ -38,12 +38,15 @@ If you ever meet Stefan Schinkel, please invite him to two beers!
 # imports
 # -----------------------------------------------------------------------------
 import os
+import re
+import shutil
 import sys
 
 from pathlib import Path
 
 from . import argparser
 from . import bib
+from . import conf
 from . import index
 from . import process
 
@@ -51,8 +54,22 @@ from . import process
 # constants
 # -----------------------------------------------------------------------------
 
+# regexps
+
+# regexp used to determine whether a string can produce an arbitrary number of
+# matches with pathlib.glob or not
+RE_GLOB_MATCHES = re.compile(r"[*?\[]")
+
+# regexp used to identify blank lines and comments in the description of
+# ancilliary files
+RE_ANCILLIARY_IGNORE = re.compile(r'^(\s*|\s*#.*)$')
+
+# messages
+
 # Info messages
 INFO_PDF_FILE_GENERATED = " {} generated"
+INFO_REMOVING_FILE = " Removing file {} ..."
+INFO_REMOVING_DIRECTORY = " Removing directory {} ..."
 
 # Warning messages
 WARNING_MAX_NB_CYCLES = " The maximum number of cycles, {}, has been reached and the processor still recommends re-running the files"
@@ -180,7 +197,6 @@ def run_index(tool: index.Idxtool) -> bool:
 
     return index_exec
 
-
 # -----------------------------------------------------------------------------
 # Automates processing a specific .tex file (named after texfile), which is
 # guaranteed to exist and to be readable
@@ -263,6 +279,58 @@ def run_pipeline(texfile: Path,
 
 
 # -----------------------------------------------------------------------------
+# Removes all ancilliary files/directories and, in case is True, it also removes
+# the final pdf file. No confirmation is required and the removal is enforced,
+# ie., no error is generated in case that the specified file does not exist
+# -----------------------------------------------------------------------------
+def run_clear(texfile: Path, delete: bool):
+    """Removes all ancilliary files/directories and, in case delete is
+    True, it also removes the final pdf file. No confirmation is required and
+    the removal is enforced, ie., no error is generated in case that the
+    specified file does not exist
+
+    """
+
+    # The description of the ancilliary files is given in the configuration
+    # file, which in turn, is taken from the typical .gitignore used in LaTeX
+    # projects. All entries might be either files or directories
+    for ipattern in conf.ANCILLIARY_EXT.splitlines():
+
+        # ignore both blank lines and comments
+        if not RE_ANCILLIARY_IGNORE.match(ipattern):
+
+            # look in the current working directory for all occurrences of this
+            # pattern
+            base = Path('.')
+            for imatch in base.glob(ipattern):
+
+                # in case this pattern was expected to produce an arbitrary
+                # number of matches, then check the match contains the name of
+                # the texfile without suffix; otherwise, accept it and proceed
+                # to its removal
+                multiple = re.search(RE_GLOB_MATCHES, ipattern)
+                if not multiple or \
+                   (multiple and texfile.with_suffix('').name in imatch.name):
+
+                    # Next verify, whether this is a file or a directory and in
+                    # either case enforce removing the corresponding match
+                    # accordingly
+                    if imatch.is_file():
+                        print(INFO_REMOVING_FILE.format(imatch))
+                        imatch.unlink(missing_ok=True)
+                    elif imatch.is_dir():
+                        print(INFO_REMOVING_DIRECTORY.format(imatch))
+                        shutil.rmtree(imatch, ignore_errors=True)
+
+    # in case it is also requested to remove the .pdf file, ...
+    if delete:
+        pdf = texfile.with_suffix('.pdf')
+        if pdf.exists():
+            print(INFO_REMOVING_FILE.format(pdf))
+            pdf.unlink(missing_ok=True)
+
+
+# -----------------------------------------------------------------------------
 # main
 #
 # Main entry point
@@ -277,24 +345,31 @@ def main():
     if not (filename := guess_filename(cli.texfile)):
         raise ValueError(f"No .tex/.latex file found with name {cli.texfile}")
 
-    # Next, determine the encoding. The user settings are used first; if none is
-    # given the env vars are checked and if this did not help either then the
-    # default value is ued
-    encoding = cli.encoding
-    if encoding is None:
+    # in case either --clear or --delete was given, skip any processing and just
+    # remove the corresponding files
+    if (cli.clear or cli.delete):
+        run_clear(filename, cli.delete)
+    else:
 
-        # get the environment variable for LC_ALL
-        encoding = os.environ.get("LC_ALL")
+        # Otherwise, proceed to process the given latex file. First determine
+        # the encoding. The user settings are used first; if none is given the
+        # env vars are checked and if this did not help either then the default
+        # value is ued
+        encoding = cli.encoding
         if encoding is None:
 
-            # then resort to UTF-8
-            encoding = "UTF-8"
+            # get the environment variable for LC_ALL
+            encoding = os.environ.get("LC_ALL")
+            if encoding is None:
 
-    # show the encoding
-    print(f" Using encoding {encoding}")
+                # then resort to UTF-8
+                encoding = "UTF-8"
 
-    # invoke the main service of this #!/usr/bin/env python
-    run_pipeline(filename, cli.processor, cli.bib, cli.index, encoding, cli.output, cli.quiet)
+        # show the encoding
+        print(f" Using encoding {encoding}")
+
+        # invoke the main service of this #!/usr/bin/env python
+        run_pipeline(filename, cli.processor, cli.bib, cli.index, encoding, cli.output, cli.quiet)
 
 
 # main
