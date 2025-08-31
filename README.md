@@ -38,19 +38,19 @@ The package will be eventually available in Pypi. In the meantime, just clone
 the repo:
 
 ``` sh
-    $ git clone https://github.com/clinaresl/pytex
+git clone https://github.com/clinaresl/pytex
 ```
 
 and install the package in your Python ecosystem with:
 
 ``` sh
-    $ python -m build .
-    $ python -m pip install dist/pytex-*.whl
-
+python -m build .
+python -m pip install dist/pytex-*.whl
 ```
 
-from the root directory of `pytex`. Installing the software will make the script
-`pytex` available in your system.
+from the root directory of `pytex`. In case the first command does not work (e.g., you get a message such as `No module named build`) try then to install `build` first with either `pip install build`, or `pipx install build` in case your Python system is marked as *externally managed*, and try again.
+
+Installing the software will make the script `pytex` available in your system.
 
 # Usage
 
