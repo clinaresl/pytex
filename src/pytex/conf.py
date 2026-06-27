@@ -48,6 +48,9 @@ ANCILLIARY_EXT = """
 *.dvi
 *.xdv
 *-converted-to.*
+*-pics.pdf
+*.fdb_latexmk
+texput.log
 
 ## Bibliography auxiliary files (bibtex/biblatex/biber):
 *.bbl

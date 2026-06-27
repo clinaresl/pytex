@@ -51,7 +51,7 @@ def create_arg_parser():
                           help="If given, no processing takes place and all ancilliary files generated for the given texfile are automatically removed. No confirmation is requested")
     optional.add_argument('-X', '--delete',
                           action="store_true",
-                          help="If given, no processing takes place and all ancilliary files generated for the given texfile and the final pdf are automatically removed, unless the name of the resulting pdf was changed with --output. No confirmation is requested")
+                          help="If given, no processing takes place and all ancilliary files generated for the given texfile and the final pdf are automatically removed (and also a .ps file if any is found following the texfile given), unless the name of the resulting pdf was changed with --output. No confirmation is requested")
     optional.add_argument('-o', '--output',
                           default="",
                           type=str,

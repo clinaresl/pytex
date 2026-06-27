@@ -329,6 +329,12 @@ def run_clear(texfile: Path, delete: bool):
             print(INFO_REMOVING_FILE.format(pdf))
             pdf.unlink(missing_ok=True)
 
+        # check in addition if any intermediate .ps file was generated
+        ps = texfile.with_suffix('.ps')
+        if ps.exists():
+            print(INFO_REMOVING_FILE.format(ps))
+            ps.unlink(missing_ok=True)
+
 
 # -----------------------------------------------------------------------------
 # main
